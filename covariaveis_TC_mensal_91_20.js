@@ -1,9 +1,9 @@
 // ==========================================================
 // TERRACLIMATE — SÉRIE MENSAL BRUTA 1991-2020 POR MUNICÍPIO
 // Formato longo: 1 linha por (município x ano x mês)
-// + MAPAS (normais anuais e mensais) + CENTROIDES DO ASSET IBGE
-// ATENÇÃO: ~5.570 municípios x 360 meses = ~2 milhões de linhas.
-// Isso é pesado — leia os avisos no final antes de rodar pro Brasil inteiro.
+// EXPORTAÇÃO EM BLOCOS ANUAIS (1 task por ano) — evita estourar
+// memória, já que ~5.570 municípios x 360 meses = ~2 milhões de
+// linhas não cabem numa única computação.
 // ==========================================================
 
 
@@ -21,9 +21,6 @@ var brasilGeom = brasilPais.geometry();
 
 // ==========================================================
 // 2. CENTROIDES MUNICIPAIS — asset próprio (código IBGE)
-//    A geometria já vem como Point (reconhecida automaticamente no
-//    upload do CSV). Recriamos latitude/longitude como propriedades
-//    a partir da geometria, para elas aparecerem na tabela final.
 // ==========================================================
 var centroidesIBGE = ee.FeatureCollection('projects/fcoliveira/assets/centroide_br')
   .map(function (feat) {
@@ -34,7 +31,6 @@ var centroidesIBGE = ee.FeatureCollection('projects/fcoliveira/assets/centroide_
     });
   });
 
-print('Exemplo de feature (geometria + propriedades):', centroidesIBGE.first());
 print('Total de municípios no asset:', centroidesIBGE.size());
 
 
@@ -50,8 +46,6 @@ var NOMES_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
 
 // ==========================================================
 // 4. FATORES DE ESCALA, UNIDADES, PALETAS E RANGES (para os mapas)
-//    'pr'/'ro'/'swe' aparecem como "Scale: 0" no catálogo — significa
-//    "sem fator de escala" (multiplicador = 1), não multiplicar por zero.
 // ==========================================================
 var ESCALAS = {
   aet: 0.1, def: 0.1, pdsi: 0.01, pet: 0.1, pr: 1, ro: 1,
@@ -94,8 +88,6 @@ var PALETAS = {
 
 // ==========================================================
 // 5. MAPAS DE CONTEXTO — normais anuais e mensais (1991-2020)
-//    (não são a série bruta — servem só de referência visual antes
-//    de rodar a extração pesada da série mensal)
 // ==========================================================
 var normaisAnuais = {};
 VARIAVEIS.forEach(function (v) {
@@ -118,21 +110,21 @@ VARIAVEIS.forEach(function (v) {
 });
 
 VARIAVEIS.forEach(function (v) {
-  for (var m = 1; m <= 12; m++) {
-    var mesStr = (m < 10 ? '0' : '') + m;
+  for (var mCtx = 1; mCtx <= 12; mCtx++) {
+    var mesStrCtx = (mCtx < 10 ? '0' : '') + mCtx;
     var imgMesNormal = terraclimate
-      .filter(ee.Filter.calendarRange(m, m, 'month'))
+      .filter(ee.Filter.calendarRange(mCtx, mCtx, 'month'))
       .select(v)
       .mean()
       .multiply(ESCALAS[v])
       .toFloat()
       .clip(brasilGeom)
-      .rename(v + '_m' + mesStr);
+      .rename(v + '_m' + mesStrCtx);
 
     Map.addLayer(
       imgMesNormal,
       { min: VIS_RANGES[v][0], max: VIS_RANGES[v][1], palette: PALETAS[v] },
-      v.toUpperCase() + ' — ' + NOMES_MESES[m - 1] + ' (' + UNIDADES[v] + ')',
+      v.toUpperCase() + ' — ' + NOMES_MESES[mCtx - 1] + ' (' + UNIDADES[v] + ')',
       false
     );
   }
@@ -153,33 +145,11 @@ Map.addLayer(
 
 
 // ==========================================================
-// 6. ANOS E MESES DA SÉRIE BRUTA (30 x 12 = 360 combinações)
-//    Gerado por aritmética de índice — mais simples e seguro do
-//    que empilhar/desempilhar listas aninhadas com flatten().
+// 6. FUNÇÃO — amostra um único (ano, mês) nos centroides
+//    Recebe números JS simples (não ee.Number), pois agora quem
+//    itera é um for do lado do cliente, não um ee.List.map.
 // ==========================================================
-var ANO_INICIO = 1991;
-var TOTAL_MESES = 30 * 12; // 360
-
-var paresAnoMes = ee.List.sequence(0, TOTAL_MESES - 1).map(function (i) {
-  i = ee.Number(i);
-  var ano = ee.Number(ANO_INICIO).add(i.divide(12).floor());
-  var mes = i.mod(12).add(1);
-  return ee.List([ano, mes]);
-});
-
-
-// ==========================================================
-// 7. PARA CADA (ANO, MÊS): monta a imagem com as 14 variáveis
-//    escaladas, amostra nos centroides do asset IBGE, marca ano/mês.
-//    sampleRegions já preserva codigo_ibge, nome_municipio, uf_sigla,
-//    regiao_nome, latitude, longitude etc. — não precisa reconstruir
-//    a Feature manualmente.
-// ==========================================================
-function amostrarAnoMes(par) {
-  par = ee.List(par);
-  var ano = ee.Number(par.get(0));
-  var mes = ee.Number(par.get(1));
-
+function amostrarAnoMes(ano, mes) {
   var dataIni = ee.Date.fromYMD(ano, mes, 1);
   var dataFim = dataIni.advance(1, 'month');
 
@@ -202,19 +172,35 @@ function amostrarAnoMes(par) {
   });
 }
 
-var tabelaCompleta = ee.FeatureCollection(
-  paresAnoMes.map(amostrarAnoMes)
-).flatten();
 
-print('Amostra da série bruta (10 primeiras linhas):', tabelaCompleta.limit(10));
+// ==========================================================
+// 7. TESTE RÁPIDO (interativo, seguro) — 1 único mês, 5 linhas
+//    NUNCA faça print() da série completa; só de um recorte pequeno
+//    como este, pra conferir se as colunas/valores estão corretos.
+// ==========================================================
+var testeUmMes = amostrarAnoMes(2020, 1);
+print('Teste — Jan/2020, 5 primeiras linhas:', testeUmMes.limit(5));
 
 
 // ==========================================================
-// 8. EXPORTAR CSV — série mensal bruta (30 anos)
+// 8. EXPORTAÇÃO EM BLOCOS ANUAIS (1 task por ano, 30 tasks no total)
+//    Cada task ~5.570 municípios x 12 meses ≈ 66.840 linhas — leve
+//    o suficiente para não estourar memória nem timeout do batch.
+//    Depois de rodar o script, vá na aba "Tasks" e clique "RUN" em
+//    cada uma das 30 tasks (elas não iniciam sozinhas).
 // ==========================================================
-Export.table.toDrive({
-  collection: tabelaCompleta,
-  description: 'terraclimate_serie_mensal_1991_2020_municipios_ibge',
-  folder: 'GEE_exports',
-  fileFormat: 'CSV'
-});
+for (var anoExport = 1991; anoExport <= 2020; anoExport++) {
+  var colecaoAno = null;
+
+  for (var mesExport = 1; mesExport <= 12; mesExport++) {
+    var amostraMes = amostrarAnoMes(anoExport, mesExport);
+    colecaoAno = (colecaoAno === null) ? amostraMes : colecaoAno.merge(amostraMes);
+  }
+
+  Export.table.toDrive({
+    collection: colecaoAno,
+    description: 'terraclimate_serie_mensal_' + anoExport + '_municipios_ibge',
+    folder: 'GEE_exports',
+    fileFormat: 'CSV'
+  });
+}
