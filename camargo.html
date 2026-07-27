@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimaTec Data — Camargo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; margin: 0; }
+        .glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(10px); border: 1px solid rgba(229,231,235,0.5); }
+        #map { height: 540px; width: 100%; border-radius: 8px; z-index: 1; cursor: pointer; }
+        .info-map { padding: 8px 12px; font: 13px/15px 'Inter',sans-serif; background: rgba(255,255,255,0.97); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #e5e7eb; max-width: 190px; max-height: 320px; overflow-y:auto; }
+        .legend-map { line-height: 20px; color: #333; }
+        .custom-tooltip { background: white; border: 1px solid #ea580c; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: 'Inter',sans-serif; font-size: 12px; }
+        #loading-screen { position: fixed; inset: 0; background: rgba(255,255,255,0.97); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; }
+        .spinner { width: 48px; height: 48px; border: 4px solid #ffedd5; border-top-color: #ea580c; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #detail-panel { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+        #detail-panel.open { max-height: 900px; }
+        .badge { display:inline-block; padding:2px 10px; border-radius:9999px; font-size:11px; font-weight:800; letter-spacing:.02em; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <p style="margin-top:16px;font-weight:700;color:#9a3412;font-size:17px">ClimaTec Data</p>
+    <p style="color:#6b7280;font-size:13px;margin-top:4px" id="load-msg">A carregar classificação Camargo...</p>
+</div>
+
+<header class="bg-emerald-800 text-white px-4 py-3 shadow-lg sticky top-0 z-50 relative">
+    <div class="flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <i data-lucide="thermometer-sun" class="w-8 h-8 text-emerald-300"></i>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">ClimaTec Data</h1>
+                <p class="text-emerald-200 text-xs">Classificação Camargo</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="hidden sm:flex items-center gap-1.5 bg-emerald-900/50 px-3 py-1.5 rounded-full border border-emerald-700/50">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                <span class="text-[9px] font-bold uppercase tracking-widest text-emerald-200">Sistema Ativo</span>
+            </div>
+            <button id="menu-toggle-btn" onclick="toggleMenu()" class="p-1.5 px-3 bg-emerald-900 border border-emerald-700 rounded-lg text-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-1.5 text-sm font-bold">
+                MENU <i data-lucide="menu" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </div>
+    <div id="main-menu" class="hidden absolute top-full right-4 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-[100]">
+        <div class="p-2 flex flex-col gap-1">
+            <button onclick="window.location.href='index.html'" class="w-full text-left px-3 py-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-xl flex items-center gap-2 font-semibold text-sm">
+                <i data-lucide="home" class="w-4 h-4"></i> Início
+            </button>
+            <button onclick="window.location.href='koppen.html'" class="w-full text-left px-3 py-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-xl flex items-center gap-2 font-semibold text-sm">
+                <i data-lucide="cloud-rain" class="w-4 h-4"></i> Köppen-Geiger
+            </button>
+            <button onclick="toggleMenu()" class="w-full text-left px-3 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl flex items-center gap-2 font-semibold text-sm">
+                <i data-lucide="sun" class="w-4 h-4"></i> Camargo
+            </button>
+            <button onclick="window.location.href='thornthwaite.html'" class="w-full text-left px-3 py-2.5 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 rounded-xl flex items-center gap-2 font-semibold text-sm">
+                <i data-lucide="droplets" class="w-4 h-4"></i> Thornthwaite
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="container mx-auto p-3 md:p-5">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div class="lg:col-span-1">
+            <div class="glass-card p-4 rounded-2xl shadow-sm border-t-4 border-t-orange-600">
+                <h2 class="text-sm font-bold mb-3 text-slate-800 flex items-center gap-2 border-b pb-2">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-orange-600"></i> Parâmetros
+                </h2>
+                <label class="block mb-1 text-xs font-bold text-slate-500 uppercase">Estado (UF):</label>
+                <select id="stateSelect" class="w-full p-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 font-medium text-slate-700 text-sm mb-3">
+                    <option value="AC">Acre</option><option value="AL">Alagoas</option>
+                    <option value="AM">Amazonas</option><option value="AP">Amapá</option>
+                    <option value="BA">Bahia</option><option value="CE">Ceará</option>
+                    <option value="DF">Distrito Federal</option><option value="ES">Espírito Santo</option>
+                    <option value="GO">Goiás</option><option value="MA">Maranhão</option>
+                    <option value="MG">Minas Gerais</option><option value="MS">Mato Grosso do Sul</option>
+                    <option value="MT">Mato Grosso</option><option value="PA">Pará</option>
+                    <option value="PB">Paraíba</option><option value="PE">Pernambuco</option>
+                    <option value="PI">Piauí</option><option value="PR" selected>Paraná</option>
+                    <option value="RJ">Rio de Janeiro</option><option value="RN">Rio Grande do Norte</option>
+                    <option value="RO">Rondônia</option><option value="RR">Roraima</option>
+                    <option value="RS">Rio Grande do Sul</option><option value="SC">Santa Catarina</option>
+                    <option value="SE">Sergipe</option><option value="SP">São Paulo</option>
+                    <option value="TO">Tocantins</option>
+                </select>
+                <label class="block mb-1 text-xs font-bold text-slate-500 uppercase">Município:</label>
+                <select id="municipioSelect" class="w-full p-2 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500 font-medium text-slate-700 text-sm mb-3">
+                    <option value="">Selecione um estado...</option>
+                </select>
+                <p class="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                    <i data-lucide="mouse-pointer-click" class="w-3 h-3 inline"></i>
+                    Escolha um município na lista ou clique diretamente no mapa.
+                </p>
+                <div class="mt-4 space-y-2">
+                    <div class="bg-orange-50 border border-orange-100 rounded-xl p-3">
+                        <h4 class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-1">Fonte de Dados</h4>
+                        <p class="text-[10px] text-orange-700 leading-relaxed">
+                            Classificação Camargo<br>
+                            Regime térmico + regime hídrico<br>
+                            Normais 1991–2020 (TerraClimate)<br>
+                            Malha: IBGE via geodata-br<br>
+                            Repositório: fcoliveira-utfpr/climas_brasil
+                        </p>
+                    </div>
+                    <div id="map-status" class="text-[10px] text-center py-1.5 px-2 rounded-lg font-bold bg-slate-100 text-slate-500">
+                        A aguardar...
+                    </div>
+                    <div id="mensal-status" class="text-[10px] text-center py-1.5 px-2 rounded-lg font-bold bg-slate-100 text-slate-500">
+                        Dados mensais: a aguardar...
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="lg:col-span-3">
+            <div class="glass-card p-2 rounded-2xl shadow-sm border border-slate-200">
+                <div id="map"></div>
+            </div>
+
+            <div id="detail-panel" class="mt-4">
+                <div class="glass-card p-4 rounded-2xl shadow-sm border-t-4 border-t-orange-600">
+                    <div class="flex justify-between items-start mb-3 border-b pb-2">
+                        <div>
+                            <h3 id="detail-title" class="text-base font-bold text-slate-800">—</h3>
+                            <p id="detail-subtitle" class="text-xs text-slate-500"></p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button id="download-csv-btn" onclick="downloadMunicipioCSV()" class="p-1.5 px-2.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-orange-700 flex items-center gap-1.5 text-xs font-bold" title="Baixar CSV com os dados deste município">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i> CSV
+                            </button>
+                            <button onclick="closeDetail()" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="detail-badges" class="flex flex-wrap gap-1.5 mb-3"></div>
+                    <div id="detail-indices" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs mb-4"></div>
+                    <div>
+                        <h4 class="text-[10px] font-black text-orange-800 uppercase tracking-widest mb-2">Balanço hídrico mensal (Normal 1991–2020, TerraClimate)</h4>
+                        <div id="chart-wrap" style="height:260px">
+                            <canvas id="climograph"></canvas>
+                        </div>
+                        <p id="chart-loading" class="hidden text-xs text-slate-400 text-center py-10">
+                            <i data-lucide="loader" class="w-4 h-4 inline animate-spin"></i> A carregar dados mensais...
+                        </p>
+                        <p id="chart-empty" class="hidden text-xs text-slate-400 text-center py-10">Sem dados mensais TerraClimate para este município.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+// ==========================================
+// MAPEAMENTO UF → código IBGE (2 dígitos)
+// ==========================================
+const UF_CODE = {
+    AC:12,AL:27,AM:13,AP:16,BA:29,CE:23,DF:53,ES:32,
+    GO:52,MA:21,MG:31,MS:50,MT:51,PA:15,PB:25,PE:26,
+    PI:22,PR:41,RJ:33,RN:24,RO:11,RR:14,RS:43,SC:42,
+    SE:28,SP:35,TO:17
+};
+const GEO_URL = (uf) =>
+    `https://raw.githubusercontent.com/tbrugz/geodata-br/master/geojson/geojs-${UF_CODE[uf]}-mun.json`;
+
+const REPO = "https://raw.githubusercontent.com/fcoliveira-utfpr/climas_brasil/refs/heads/main/";
+const URL_CLASSE = REPO + "camargo_municipios_preenchido.csv";
+const URL_MENSAL_UF = (uf) => REPO + `mensal_uf/${uf}.json`;
+
+let map, geojsonLayer, climoChart;
+const codeToClasse = new Map();   // code -> row do camargo
+const layerByCode  = new Map();   // code -> layer Leaflet (do estado atualmente exibido)
+
+let mensalData    = {};
+let mensalUfLoaded = null;
+let mensalLoading  = false;
+
+let classeReady = false;
+let currentUf = "PR";
+let selectedCode = null;
+
+// ==========================================
+// UTILIDADES
+// ==========================================
+function setMsg(t)  { const e=document.getElementById('load-msg');    if(e) e.textContent=t; }
+function hideLoad() { const e=document.getElementById('loading-screen'); if(e) e.style.display='none'; }
+function setStatus(t,c){ const e=document.getElementById('map-status'); if(e){e.textContent=t;e.className=`text-[10px] text-center py-1.5 px-2 rounded-lg font-bold ${c}`;}}
+function setMensalStatus(t,c){ const e=document.getElementById('mensal-status'); if(e){e.textContent=t;e.className=`text-[10px] text-center py-1.5 px-2 rounded-lg font-bold ${c}`;}}
+
+function cleanKey(k){ return k.replace(/[^\x20-\x7E]/g,'').toLowerCase().trim(); }
+const findKey = (row,fn) => Object.keys(row).find(k=>fn(cleanKey(k)));
+
+function normCode(v){
+    if(v===null||v===undefined) return null;
+    const s = v.toString().trim();
+    if(!s) return null;
+    const n = Math.trunc(parseFloat(s));
+    if(isNaN(n)) return null;
+    return n.toString();
+}
+
+function parseBR(v) {
+    if(v===null||v===undefined||v==='') return NaN;
+    let s=v.toString().trim();
+    if(s.includes(',')&&s.includes('.'))
+        s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
+    else if(s.includes(',')) s=s.replace(',','.');
+    return parseFloat(s);
+}
+
+// ==========================================
+// MENU
+// ==========================================
+function toggleMenu(){ document.getElementById('main-menu').classList.toggle('hidden'); }
+document.addEventListener('click',e=>{
+    const m=document.getElementById('main-menu'),b=document.getElementById('menu-toggle-btn');
+    if(m&&!m.classList.contains('hidden')&&!m.contains(e.target)&&!b.contains(e.target)) m.classList.add('hidden');
+});
+
+// ==========================================
+// INIT MAPA
+// ==========================================
+function initMap(){
+    map=L.map('map').setView([-24.5,-51.0],6);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+        {attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+}
+
+// ==========================================
+// CORES — Camargo (regime térmico x regime hídrico)
+// ==========================================
+const TERMICO_HUE   = {TR:0, TE:30, STE:55, ST:210};
+const HIDRICO_LIGHT = {UM:38, MO:55, SE:72};
+const TERMICO_NOME = {TR:'Tropical', TE:'Temperado', STE:'Subtropical Especial', ST:'Subtropical'};
+const HIDRICO_NOME = {UM:'Úmido', MO:'Moderado', SE:'Seco'};
+function camargoColor(termico,hidrico){
+    const hue = TERMICO_HUE[termico] ?? 0;
+    const light = HIDRICO_LIGHT[hidrico] ?? 55;
+    return `hsl(${hue},72%,${light}%)`;
+}
+
+// ==========================================
+// CARGA — classificação primeiro (rápida), mensal depois (por estado)
+// ==========================================
+function loadClasse(){
+    setMsg('A carregar classificação Camargo...');
+    Papa.parse(URL_CLASSE,{download:true,header:true,skipEmptyLines:true,
+        complete:res=>{
+            res.data.forEach(row=>{
+                const k=findKey(row,k=>k==='code_muni'); if(!k) return;
+                const c=normCode(row[k]); if(c) codeToClasse.set(c,row);
+            });
+            classeReady = true;
+            setMsg('A carregar malha geográfica...');
+            populateMunicipioSelect();
+            processMapData();
+            loadMensalBackground(currentUf);
+        },
+        error:()=>{setStatus('Erro ao carregar CSV Camargo','bg-red-100 text-red-800');hideLoad();}
+    });
+}
+
+async function loadMensalBackground(uf){
+    if(mensalUfLoaded===uf || mensalLoading) return;
+    mensalLoading = true;
+    setMensalStatus(`Dados mensais de ${uf}: a carregar...`,'bg-yellow-100 text-yellow-800');
+    try{
+        const resp = await fetch(URL_MENSAL_UF(uf));
+        if(!resp.ok) throw new Error('HTTP '+resp.status);
+        mensalData = await resp.json();
+        mensalUfLoaded = uf;
+        setMensalStatus(`Dados mensais de ${uf} prontos ✓`,'bg-green-100 text-green-800');
+    } catch(err){
+        console.error(err);
+        mensalData = {};
+        mensalUfLoaded = null;
+        setMensalStatus(`Erro ao carregar dados mensais de ${uf}`,'bg-red-100 text-red-800');
+    } finally {
+        mensalLoading = false;
+        if(selectedCode) renderMonthlyChart(selectedCode);
+    }
+}
+
+// ==========================================
+// SELECT DE MUNICÍPIO
+// ==========================================
+function populateMunicipioSelect(){
+    const uf = currentUf.toUpperCase();
+    const sel = document.getElementById('municipioSelect');
+    const options = [];
+    codeToClasse.forEach((row,code)=>{
+        if((row.abbrev_state||'').trim().toUpperCase()===uf){
+            options.push({code, nome: row.name_muni});
+        }
+    });
+    options.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    sel.innerHTML = '<option value="">Selecione um município...</option>' +
+        options.map(o=>`<option value="${o.code}">${o.nome}</option>`).join('');
+}
+
+// ==========================================
+// PROCESSAMENTO — join por código IBGE
+// ==========================================
+async function processMapData(){
+    if(!classeReady) return;
+    const uf = currentUf.toUpperCase();
+
+    setStatus('Processando…','bg-blue-100 text-blue-800');
+
+    const dataMap = new Map();
+    const catsSeen = new Set();
+    codeToClasse.forEach((row,code)=>{
+        if((row.abbrev_state||'').trim().toUpperCase()!==uf) return;
+        catsSeen.add(`${row.cm_termico}-${row.cm_hidrico}`);
+        dataMap.set(code, {color: camargoColor(row.cm_termico, row.cm_hidrico), row});
+    });
+
+    try{
+        setStatus('A carregar malha geográfica…','bg-yellow-100 text-yellow-800');
+        setMsg(`A carregar malha de ${uf}…`);
+
+        const geoData = await fetch(GEO_URL(uf)).then(r=>r.json());
+
+        if(geojsonLayer) map.removeLayer(geojsonLayer);
+        layerByCode.clear();
+
+        geojsonLayer = L.geoJson(geoData, {
+            style: feature => {
+                const code = (feature.properties.id||'').toString().trim();
+                const d = dataMap.get(code);
+                return {fillColor: d ? d.color : '#dddddd', color:'#555', weight:0.4, fillOpacity:0.82, opacity:1};
+            },
+            onEachFeature: (feature, layer) => {
+                const code = (feature.properties.id||'').toString().trim();
+                const d = dataMap.get(code);
+                const nome = (d && d.row.name_muni) || feature.properties.name || 'Desconhecido';
+                const cl = d ? d.row.camargo_completo : 'Sem dados';
+                layer.bindTooltip(
+                    `<div style="text-align:left"><b style="color:#9a3412">Município:</b> ${nome}<br><b style="color:#9a3412">Camargo:</b> ${cl}</div>`,
+                    {sticky:true, className:'custom-tooltip'}
+                );
+                layer.on('click', () => {
+                    document.getElementById('municipioSelect').value = code;
+                    showMunicipioDetail(code, nome);
+                });
+                layerByCode.set(code, layer);
+            }
+        }).addTo(map);
+
+        map.fitBounds(geojsonLayer.getBounds());
+        drawLegend(catsSeen);
+        setStatus(`${uf} — Camargo ✓`,'bg-green-100 text-green-800');
+        hideLoad();
+
+    } catch(err){
+        console.error(err);
+        setStatus('Erro ao carregar malha','bg-red-100 text-red-800');
+        hideLoad();
+    }
+}
+
+// ==========================================
+// LEGENDA (somente combinações presentes no estado)
+// ==========================================
+function drawLegend(catsSeen){
+    document.querySelectorAll('.legend-ctrl').forEach(e=>e.remove());
+    const leg=L.control({position:'topright'});
+    leg.onAdd=function(){
+        const div=L.DomUtil.create('div','info-map legend-map legend-ctrl');
+        let h='';
+        Array.from(catsSeen).sort().forEach(pair=>{
+            const [term,hid]=pair.split('-');
+            h+=`<div style="display:flex;align-items:center;margin-bottom:3px">
+                <div style="width:12px;height:12px;background:${camargoColor(term,hid)};border:1px solid #333;margin-right:5px;border-radius:2px"></div>
+                <span style="font-size:11px">${term}-${hid}</span></div>`;
+        });
+        div.innerHTML=`<div style="font-weight:700;font-size:10px;text-transform:uppercase;color:#9a3412;margin-bottom:6px">Camargo<br>${currentUf}</div>${h}
+            <div style="font-size:9px;color:#888;margin-top:6px;border-top:1px solid #eee;padding-top:4px">Térmico-Hídrico<br>(regime completo no popup)</div>`;
+        return div;
+    };
+    leg.addTo(map);
+}
+
+// ==========================================
+// PAINEL DE DETALHE DO MUNICÍPIO
+// ==========================================
+const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const fmt = (v,d=1) => (v===null||v===undefined||isNaN(v)) ? '—' : v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function badge(text,color){
+    return `<span class="badge" style="background:${color};color:#111;border:1px solid rgba(0,0,0,.15)">${text}</span>`;
+}
+function indexCard(label,val,unit){
+    return `<div class="bg-slate-50 border border-slate-100 rounded-lg p-2">
+        <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wide">${label}</div>
+        <div class="text-sm font-bold text-slate-700">${val}${unit?' '+unit:''}</div>
+    </div>`;
+}
+
+function showMunicipioDetail(code, nomeFallback){
+    selectedCode = code;
+    const row = codeToClasse.get(code);
+    const nome = (row && row.name_muni) || nomeFallback || 'Município';
+
+    document.getElementById('detail-title').textContent = nome;
+    document.getElementById('detail-subtitle').textContent = `Código IBGE: ${code} · ${currentUf}`;
+
+    let badges = '', idx = '';
+    if(row){
+        badges += badge(`Camargo: ${row.camargo_completo}`, camargoColor(row.cm_termico, row.cm_hidrico));
+        badges += badge(`${TERMICO_NOME[row.cm_termico]||row.cm_termico}`, '#fff7ed');
+        badges += badge(`${HIDRICO_NOME[row.cm_hidrico]||row.cm_hidrico}`, '#fff7ed');
+        idx += indexCard('Déficit hídrico anual', fmt(parseBR(row.def_anual_mm),0), 'mm');
+        idx += indexCard('Excedente hídrico anual', fmt(parseBR(row.excedente_anual_mm),0), 'mm');
+        idx += indexCard('Temp. anual', fmt(parseBR(row.temp_anual_c)), '°C');
+        idx += indexCard('Temp. mês mais frio', fmt(parseBR(row.temp_mes_mais_frio_c)), '°C');
+        idx += indexCard('Letra de seca', row.cm_letra_seca || '—', '');
+        if((row.preenchido_por_vizinho||'').toString().toLowerCase()==='true'){
+            idx += indexCard('Observação', 'Interpolado', 'de município vizinho');
+        }
+    } else {
+        badges = '<span class="text-xs text-slate-400">Sem classificação disponível para este município.</span>';
+    }
+    document.getElementById('detail-badges').innerHTML = badges;
+    document.getElementById('detail-indices').innerHTML = idx;
+
+    renderMonthlyChart(code);
+
+    document.getElementById('detail-panel').classList.add('open');
+    if(typeof lucide!=='undefined') lucide.createIcons();
+    document.getElementById('detail-panel').scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function renderMonthlyChart(code){
+    if(code !== selectedCode) return;
+    const chartWrap    = document.getElementById('chart-wrap');
+    const chartLoading  = document.getElementById('chart-loading');
+    const chartEmpty   = document.getElementById('chart-empty');
+
+    const mensalPronto = (mensalUfLoaded===currentUf) && !mensalLoading;
+    if(!mensalPronto){
+        chartWrap.classList.add('hidden');
+        chartEmpty.classList.add('hidden');
+        chartLoading.classList.remove('hidden');
+        if(typeof lucide!=='undefined') lucide.createIcons();
+        return;
+    }
+
+    const mensal = mensalData[code];
+    if(!mensal){
+        chartWrap.classList.add('hidden');
+        chartLoading.classList.add('hidden');
+        chartEmpty.classList.remove('hidden');
+        return;
+    }
+
+    chartLoading.classList.add('hidden');
+    chartEmpty.classList.add('hidden');
+    chartWrap.classList.remove('hidden');
+
+    const pr  = mensal.pr;
+    const pet = mensal.pet;
+    const def = mensal.def;
+
+    if(climoChart) climoChart.destroy();
+    const ctx = document.getElementById('climograph').getContext('2d');
+    climoChart = new Chart(ctx, {
+        data: {
+            labels: MESES,
+            datasets: [
+                { type:'bar',  label:'Precipitação (mm)', data:pr,  backgroundColor:'rgba(37,99,235,0.55)', borderColor:'rgba(37,99,235,1)', borderWidth:1, yAxisID:'y' },
+                { type:'line', label:'Evapotr. potencial — PET (mm)', data:pet, borderColor:'#ea580c', backgroundColor:'#ea580c', tension:0.3, yAxisID:'y', pointRadius:3 },
+                { type:'bar',  label:'Déficit hídrico (mm)', data:def, backgroundColor:'rgba(220,38,38,0.35)', borderColor:'rgba(220,38,38,0.8)', borderWidth:1, yAxisID:'y' }
+            ]
+        },
+        options: {
+            responsive:true, maintainAspectRatio:false,
+            interaction:{mode:'index',intersect:false},
+            plugins:{ legend:{position:'bottom', labels:{boxWidth:12,font:{size:10}}} },
+            scales:{
+                y:  { position:'left', title:{display:true,text:'mm',font:{size:10}}, beginAtZero:true }
+            }
+        }
+    });
+}
+
+function closeDetail(){
+    document.getElementById('detail-panel').classList.remove('open');
+    selectedCode = null;
+}
+
+// ==========================================
+// EXPORTAÇÃO CSV DO MUNICÍPIO SELECIONADO
+// ==========================================
+function triggerCsvDownload(filename, csvText){
+    const blob = new Blob(['\uFEFF' + csvText], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function slugify(s){
+    return (s||'municipio').toString().normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
+
+function downloadMunicipioCSV(){
+    if(!selectedCode){ alert('Selecione um município primeiro.'); return; }
+    const code = selectedCode;
+    const row  = codeToClasse.get(code);
+    if(!row){ alert('Não há dados de classificação para este município.'); return; }
+
+    const nome = row.name_muni || 'municipio';
+    const uf   = row.abbrev_state || currentUf;
+
+    const anual = [{
+        code_muni: code,
+        municipio: nome,
+        uf: uf,
+        classificacao_camargo: row.camargo_completo || '',
+        classe_termica: TERMICO_NOME[row.cm_termico] || row.cm_termico || '',
+        classe_hidrica: HIDRICO_NOME[row.cm_hidrico] || row.cm_hidrico || '',
+        letra_seca: row.cm_letra_seca || '',
+        deficit_hidrico_anual_mm: fmt(parseBR(row.def_anual_mm), 0),
+        excedente_hidrico_anual_mm: fmt(parseBR(row.excedente_anual_mm), 0),
+        temp_anual_c: fmt(parseBR(row.temp_anual_c)),
+        temp_mes_mais_frio_c: fmt(parseBR(row.temp_mes_mais_frio_c)),
+        preenchido_por_vizinho: row.preenchido_por_vizinho || 'false'
+    }];
+
+    const mensal = mensalData[code];
+    const mensalRows = [];
+    if(mensal){
+        for(let i=0;i<12;i++){
+            mensalRows.push({
+                code_muni: code,
+                municipio: nome,
+                mes: MESES[i],
+                mes_num: i+1,
+                precipitacao_mm: mensal.pr  ? mensal.pr[i]  : '',
+                etp_mm:          mensal.pet ? mensal.pet[i] : '',
+                deficit_hidrico_mm: mensal.def ? mensal.def[i] : ''
+            });
+        }
+    }
+
+    const linhas = [];
+    linhas.push('# ClimaTec Data — Camargo (1991) mod. Maluf (2000) — dados do município');
+    linhas.push('# Fonte: normais climatológicas 1991-2020 (TerraClimate), via fcoliveira-utfpr/climas_brasil');
+    linhas.push('# Bloco 1: classificação e variáveis anuais');
+    linhas.push(Papa.unparse(anual));
+    linhas.push('');
+    linhas.push('# Bloco 2: série climatológica mensal (média 1991-2020)');
+    linhas.push(mensalRows.length ? Papa.unparse(mensalRows) : '# Dados mensais indisponíveis (ainda a carregar ou sem cobertura para esta UF)');
+
+    const csvFinal = linhas.join('\n');
+    triggerCsvDownload(`camargo_${slugify(nome)}_${code}.csv`, csvFinal);
+}
+
+// ==========================================
+// EVENTOS
+// ==========================================
+document.getElementById('stateSelect').addEventListener('change',e=>{
+    currentUf=e.target.value;
+    closeDetail();
+    populateMunicipioSelect();
+    if(classeReady) processMapData();
+    loadMensalBackground(currentUf);
+});
+
+document.getElementById('municipioSelect').addEventListener('change',e=>{
+    const code = e.target.value;
+    if(!code) return;
+    const row = codeToClasse.get(code);
+    const nome = row ? row.name_muni : '';
+    showMunicipioDetail(code, nome);
+    const layer = layerByCode.get(code);
+    if(layer){
+        map.fitBounds(layer.getBounds(), {maxZoom:10});
+        layer.openTooltip();
+    }
+});
+
+window.onload=()=>{
+    if(typeof lucide!=='undefined') lucide.createIcons();
+    initMap();
+    loadClasse();
+};
+</script>
+</body>
+</html>
