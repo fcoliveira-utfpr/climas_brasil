@@ -14,11 +14,12 @@ Se você chegou até aqui, ou é revisor de periódico verificando reprodutibili
 
 Antes de mergulhar nos notebooks, dá uma olhada na plataforma interativa **ClimaTec Data**, construída especialmente para explorar estes resultados sem precisar abrir uma linha de Python:
 
-🔗 `[URL do GitHub Pages a confirmar]`
+🔗 `[[URL do GitHub Pages a confirmar]](https://fcoliveira-utfpr.github.io/climas_brasil)`
 
 - Escolha um estado e um município
 - Veja a classe climática segundo Köppen-Geiger, Camargo e Thornthwaite
 - Explore o climograma / balanço hídrico mensal de cada município (normais 1991–2020, TerraClimate)
+- Exploque o atlas em escala nacional
 
 Toda a aplicação roda no navegador — sem servidor, sem backend, só HTML/JS e uma dose generosa de `fetch()`.
 
@@ -98,7 +99,7 @@ Detalhes completos de equações, limiares e fontes estão descritos na seção 
 Se este repositório ou os dados forem úteis para o seu trabalho, por favor cite o artigo original:
 
 ```
-[SOBRENOME, Nome et al. Classificação climática de Köppen-Geiger, Thornthwaite e Camargo
+[Oliveira, F. C. Classificação climática de Köppen-Geiger, Thornthwaite e Camargo
 para o Brasil: uma abordagem por unidades político-administrativas. Periódico, v. X, n. X,
 ano. DOI: [inserir]]
 ```
