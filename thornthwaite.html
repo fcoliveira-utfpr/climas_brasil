@@ -31,7 +31,7 @@
 <div id="loading-screen">
     <div class="spinner"></div>
     <p style="margin-top:16px;font-weight:700;color:#155e75;font-size:17px">ClimaTec Data</p>
-    <p style="color:#6b7280;font-size:13px;margin-top:4px" id="load-msg">A carregar classificação Thornthwaite...</p>
+    <p style="color:#6b7280;font-size:13px;margin-top:4px" id="load-msg">Carregando classificação Thornthwaite...</p>
 </div>
 
 <header class="bg-emerald-800 text-white px-4 py-3 shadow-lg sticky top-0 z-50 relative">
@@ -152,7 +152,7 @@
                             <canvas id="climograph"></canvas>
                         </div>
                         <p id="chart-loading" class="hidden text-xs text-slate-400 text-center py-10">
-                            <i data-lucide="loader" class="w-4 h-4 inline animate-spin"></i> A carregar dados mensais...
+                            <i data-lucide="loader" class="w-4 h-4 inline animate-spin"></i> Carregando dados mensais...
                         </p>
                         <p id="chart-empty" class="hidden text-xs text-slate-400 text-center py-10">Sem dados mensais TerraClimate para este município.</p>
                     </div>
@@ -264,7 +264,7 @@ function thornColor(cls){
 // CARGA — classificação primeiro (rápida), mensal depois (por estado)
 // ==========================================
 function loadClasse(){
-    setMsg('A carregar classificação Thornthwaite...');
+    setMsg('Carregando classificação Thornthwaite...');
     Papa.parse(URL_CLASSE,{download:true,header:true,skipEmptyLines:true,
         complete:res=>{
             res.data.forEach(row=>{
@@ -272,7 +272,7 @@ function loadClasse(){
                 const c=normCode(row[k]); if(c) codeToClasse.set(c,row);
             });
             classeReady = true;
-            setMsg('A carregar malha geográfica...');
+            setMsg('Carregando grade geográfica...');
             populateMunicipioSelect();
             processMapData();
             loadMensalBackground(currentUf);
@@ -284,7 +284,7 @@ function loadClasse(){
 async function loadMensalBackground(uf){
     if(mensalUfLoaded===uf || mensalLoading) return;
     mensalLoading = true;
-    setMensalStatus(`Dados mensais de ${uf}: a carregar...`,'bg-yellow-100 text-yellow-800');
+    setMensalStatus(`Dados mensais de ${uf}: carregando...`,'bg-yellow-100 text-yellow-800');
     try{
         const resp = await fetch(URL_MENSAL_UF(uf));
         if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -335,8 +335,8 @@ async function processMapData(){
     });
 
     try{
-        setStatus('A carregar malha geográfica…','bg-yellow-100 text-yellow-800');
-        setMsg(`A carregar malha de ${uf}…`);
+        setStatus('Carregando grade geográfica…','bg-yellow-100 text-yellow-800');
+        setMsg(`Carregando grade de ${uf}…`);
 
         const geoData = await fetch(GEO_URL(uf)).then(r=>r.json());
 
@@ -573,7 +573,7 @@ function downloadMunicipioCSV(){
     linhas.push(Papa.unparse(anual));
     linhas.push('');
     linhas.push('# Bloco 2: série climatológica mensal (média 1991-2020)');
-    linhas.push(mensalRows.length ? Papa.unparse(mensalRows) : '# Dados mensais indisponíveis (ainda a carregar ou sem cobertura para esta UF)');
+    linhas.push(mensalRows.length ? Papa.unparse(mensalRows) : '# Dados mensais indisponíveis (ainda carregando ou sem cobertura para esta UF)');
 
     const csvFinal = linhas.join('\n');
     triggerCsvDownload(`thornthwaite_${slugify(nome)}_${code}.csv`, csvFinal);
