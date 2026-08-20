@@ -1,0 +1,17 @@
+Variável,Tipo de Dado,Categoria,Descrição / Significado,Exemplo no Dataset
+code_muni,Numérico (Float/Int),Identificação,Código oficial do IBGE para identificação do município,1100015.0
+name_muni,Texto (String),Identificação,Nome oficial do município,Alta Floresta d'Oeste
+abbrev_state,Texto (String),Localização,Sigla da Unidade Federativa (Estado),RO
+thornthwaite_completo,Texto (String),Classificação Climática,"Fórmula climática completa no sistema de Thornthwaite (1948) combinando os 4 critérios: hídrico, subtipo sazonal, eficiência térmica e concentração no verão",B1wA'a'
+th_classe,Texto (String),Classificação Climática,"1ª letra da fórmula: Tipo/Província de umidade baseado no Índice de Umidade Global (Im​) (ex.: B1 = Primeiro tipo de clima Úmido, B4 = Quarto tipo)",B1
+th_classe_codigo,Numérico (Float),Classificação Climática,Código numérico interno associado ao tipo hídrico principal de Thornthwaite,5.0
+th_subtipo,Texto (String),Classificação Climática,2ª letra da fórmula: Variação estacional da umidade / índice de aridez ou índice hídrico (ex.: w = moderada deficiência no inverno; r = sem deficiência hídrica / pouca ou nenhuma seca),w
+th_pety,Texto (String),Classificação Climática,"3ª letra da fórmula: Província térmica baseada na Evapotranspiração Potencial anual acumulada (PETanual​) (ex.: A' = Megatérmico, B4' = Mesotérmico)",A'
+th_petr,Texto (String),Classificação Climática,"4ª letra da fórmula: Concentração térmica no verão (percentual da evapotranspiração potencial dos 3 meses de verão em relação ao total anual) (ex.: a', b4')",a'
+def_anual_mm,Numérico Contínuo,Balanço Hídrico,Déficit hídrico anual acumulado (D ou DEF) em milímetros (mm),212.14
+excedente_anual_mm,Numérico Contínuo,Balanço Hídrico,Excedente hídrico anual acumulado (S ou EXC) em milímetros (mm),557.43
+pet_anual_mm,Numérico Contínuo,Balanço Hídrico,"Evapotranspiração Potencial anual (PET ou ETP) acumulada em milímetros (mm), refletindo a demanda evaporativa e a eficiência térmica do local",1200.91
+indice_umidade_im,Numérico Contínuo,Balanço Hídrico,"Índice de Umidade Global de Thornthwaite (Im​=Ih​−0,6×Ia​ ou Im​=ETP100(EXC−DEF)​)",35.82
+indice_hidrico_ih,Numérico Contínuo,Balanço Hídrico,"Índice Hídrico de Thornthwaite (Ih​=ETP100×EXC​), quantifica o excesso de água relativo",46.42
+indice_aridez_ia,Numérico Contínuo,Balanço Hídrico,"Índice de Aridez de Thornthwaite (Ia​=ETP100×DEF​), quantifica a intensidade da falta de água relativa",17.66
+preenchido_por_vizinho,Lógico (Booleano),Controle de Dados,Indica se o registro foi interpolado/imputado a partir de um município vizinho,False
