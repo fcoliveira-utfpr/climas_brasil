@@ -1,0 +1,12 @@
+Variável,Tipo de Dado,Categoria,Descrição / Significado,Exemplo no Dataset
+code_muni,Numérico (Float/Int),Identificação,Código oficial do IBGE para identificação do município,1100015.0
+name_muni,Texto (String),Identificação,Nome oficial do município,Alta Floresta d'Oeste
+abbrev_state,Texto (String),Localização,Sigla da Unidade Federativa (Estado),RO
+classe_koppen,Texto (String),Classificação Climática,Classificação climática segundo o sistema de Köppen-Geiger (ex.: Aw = Tropical com estação seca de inverno),Aw
+classe_koppen_codigo,Numérico (Float),Classificação Climática,Código numérico interno associado à classe de Köppen (ex.: 4.0 para Aw),4.0
+precip_anual_mm,Numérico Contínuo,Meteorologia,Precipitação pluviométrica total anual acumulada (em milímetros),1543.70
+precip_mes_mais_seco_mm,Numérico Contínuo,Meteorologia,Volume de chuva acumulado no mês de menor precipitação do ano (em milímetros; crítico para definir limites como os 60 mm do grupo A de Köppen),6.07
+temp_anual_c,Numérico Contínuo,Meteorologia,Temperatura média anual do ar (em °C),25.14
+temp_mes_mais_frio_c,Numérico Contínuo,Meteorologia,Temperatura média do ar no mês mais frio do ano (em °C; limite de 18∘C separa clima tropical de temperado/subtropical),23.73
+temp_mes_mais_quente_c,Numérico Contínuo,Meteorologia,Temperatura média do ar no mês mais quente do ano (em °C; usado para identificar subtipos de verão quente ou ameno),26.01
+preenchido_por_vizinho,Lógico (Booleano),Controle de Dados,Indica se o valor foi interpolado/imputado a partir de um município vizinho devido à ausência de estação/dados locais,False
