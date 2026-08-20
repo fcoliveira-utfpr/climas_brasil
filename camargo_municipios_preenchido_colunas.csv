@@ -1,0 +1,15 @@
+Variável,Tipo de Dado,Categoria,Descrição / Significado,Exemplo no Dataset
+code_muni,Numérico (Float/Int),Identificação,Código oficial do IBGE para identificação do município,1100015.0
+name_muni,Texto (String),Identificação,Nome oficial do município,Alta Floresta d'Oeste
+abbrev_state,Texto (String),Localização,Sigla da Unidade Federativa (Estado),RO
+camargo_completo,Texto (String),Classificação Climática,Código consolidado do clima segundo Camargo (1991),TR-MOi
+cm_termico,Texto (String),Classificação Climática,Sigla da classe térmica (ex.: TR = Tropical),TR
+cm_termico_codigo,Numérico (Float),Classificação Climática,Identificador numérico da classe térmica,7.0
+cm_hidrico,Texto (String),Classificação Climática,Sigla do regime hídrico (ex.: MO = Moderadamente Úmido),MO
+cm_hidrico_codigo,Numérico (Float),Classificação Climática,Identificador numérico da classe hídrica,4.0
+cm_letra_seca,Texto (String),Classificação Climática,Estação do ano em que ocorre o déficit hídrico (i = inverno),i
+def_anual_mm,Numérico Contínuo,Balanço Hídrico,Déficit hídrico acumulado no ano (em mm),212.14
+excedente_anual_mm,Numérico Contínuo,Balanço Hídrico,Excedente hídrico acumulado no ano (em mm),557.43
+temp_anual_c,Numérico Contínuo,Meteorologia,Temperatura média anual do ar (em °C),25.14
+temp_mes_mais_frio_c,Numérico Contínuo,Meteorologia,Temperatura média do ar no mês mais frio (em °C),23.73
+preenchido_por_vizinho,Lógico (Booleano),Controle de Dados,Indica se o valor foi interpolado/herdado de município vizinho,False
